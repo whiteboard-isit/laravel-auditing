@@ -24,7 +24,7 @@ class Database implements AuditDriver
         if (($threshold = $model->getAuditThreshold()) > 0) {
             $recentIds = $model->audits()
                 ->orderBy('created_at', 'desc') // MongoDB usually uses _id as primary key
-                ->limit($threshold)->get()
+                ->limit($threshold)
                 ->pluck('_id');
             return $model->audits()
                 ->whereNotIn('_id', $recentIds)
