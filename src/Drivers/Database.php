@@ -22,23 +22,12 @@ class Database implements AuditDriver
     public function prune(Auditable $model): bool
     {
         if (($threshold = $model->getAuditThreshold()) > 0) {
-            $auditClass = get_class($model->audits()->getModel());
-            $auditModel = new $auditClass;
-
+            $recentIds = $model->audits()
+                ->orderBy('created_at', 'desc') // MongoDB usually uses _id as primary key
+                ->limit($threshold)->get()
+                ->pluck('_id');
             return $model->audits()
-                ->leftJoinSub(
-                    $model->audits()->getQuery()
-                        ->select($auditModel->getKeyName())->limit($threshold)->latest(),
-                    'audit_threshold',
-                    function ($join) use ($auditModel) {
-                        $join->on(
-                            $auditModel->gettable().'.'.$auditModel->getKeyName(),
-                            '=',
-                            'audit_threshold.'.$auditModel->getKeyName()
-                        );
-                    }
-                )
-                ->whereNull('audit_threshold.'.$auditModel->getKeyName())
+                ->whereNotIn('_id', $recentIds)
                 ->delete() > 0;
         }
 
